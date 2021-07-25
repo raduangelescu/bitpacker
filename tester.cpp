@@ -16,13 +16,13 @@ int randomTestBit(const uint32_t Size) {
   auto Buffer = new uint32_t[Size];
 
   printf("writing buffer\n");
-  BufferWriter MyBufferWritter(Buffer, Size);
+  BitWriter MyBufferWritter(Buffer, Size);
   for (uint32_t i = 0; i < Size; i++) {
     MyBufferWritter.WriteBits(ArrWrite[i], sizeof(uint8_t) * c_NumBitsPerByte);
   }
   MyBufferWritter.Flush();
   printf("reading buffer\n");
-  BufferReader MyBufferReader(Buffer, Size);
+  BitReader MyBufferReader(Buffer, Size);
   for (uint32_t i = 0; i < Size; i++) {
     MyBufferReader.ReadBits(ArrRead[i], sizeof(uint8_t) * c_NumBitsPerByte);
   }
@@ -40,7 +40,7 @@ int sanity_check_buffer_read() {
   printf("sanity check buffer read\n");
   uint32_t Value = 0;
   uint32_t ArrFake[1];
-  BufferReader r(ArrFake, 0);
+  BitReader r(ArrFake, 0);
   return !r.ReadBits(Value, BitPacker::c_NumBitsPerWord) ? 0 : 1;
 }
 
@@ -49,7 +49,7 @@ int sanity_check_buffer_read_above32() {
   const uint32_t HugeNumberOfBits = 128;
   uint32_t Value = 0;
   uint32_t ArrFake[1];
-  BufferReader w(ArrFake, 1);
+  BitReader w(ArrFake, 1);
   return !w.ReadBits(Value, HugeNumberOfBits) ? 0 : 1;
 }
 
@@ -57,7 +57,7 @@ int sanity_check_buffer_write() {
   printf("sanity check buffer write\n");
   uint32_t Value = 0;
   uint32_t ArrFake[1];
-  BufferWriter w(ArrFake, 0);
+  BitWriter w(ArrFake, 0);
   return !w.WriteBits(Value, BitPacker::c_NumBitsPerWord) ? 0 : 1;
 }
 
@@ -66,11 +66,13 @@ int sanity_check_buffer_write_above32() {
   const uint32_t HugeNumberOfBits = 128;
   uint32_t Value = 0;
   uint32_t ArrFake[1];
-  BufferWriter w(ArrFake, 1);
+  BitWriter w(ArrFake, 1);
   return !w.WriteBits(Value, HugeNumberOfBits) ? 0 : 1;
 }
 
-int sanity_bits_required() { return GET_BITS_REQUIRED(0, 256) == 9 ? 0 : 1; }
+int sanity_bits_required() {
+  return getNumberOfBitsForRange(0, 256) == 9 ? 0 : 1;
+}
 
 int main(int argc, char **argv) {
   const size_t c_Seed = 0xFEFE;
