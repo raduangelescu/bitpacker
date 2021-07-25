@@ -70,6 +70,8 @@ int sanity_check_buffer_write_above32() {
   return !w.WriteBits(Value, HugeNumberOfBits) ? 0 : 1;
 }
 
+int sanity_bits_required() { return GET_BITS_REQUIRED(0, 256) == 9 ? 0 : 1; }
+
 int main(int argc, char **argv) {
   const size_t c_Seed = 0xFEFE;
   srand(c_Seed);
@@ -97,6 +99,10 @@ int main(int argc, char **argv) {
 
   if (strcmp("sanity_bit_write_huge_bits", testType) == 0) {
     return sanity_check_buffer_write_above32();
+  }
+
+  if (strcmp("sanity_bits_required", testType) == 0) {
+    return sanity_bits_required();
   }
 
   return 0;
