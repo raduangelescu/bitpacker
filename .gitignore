@@ -12,3 +12,10 @@ _deps
 *.sln
 out/
 *.ninja
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.exe
+*.pdb
+tester.dir/
+x64/
