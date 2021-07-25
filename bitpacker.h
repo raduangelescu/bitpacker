@@ -19,7 +19,7 @@ constexpr uint32_t getNumberOfBits(uint32_t x) {
 }
 
 constexpr uint32_t getNumberOfBitsForRange(uint32_t min, uint32_t max) {
-  return getNumberOfBits(max - min) + 1;
+  return getNumberOfBits(max - min);
 }
 
 uint32_t getMaxValueForBits(uint32_t bits) { return (1 << bits) - 1; }
