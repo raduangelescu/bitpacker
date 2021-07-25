@@ -37,6 +37,10 @@ public:
       return false;
     }
 
+    if (bits > c_NumBitsPerWord) {
+      return false;
+    }
+
     if (m_ScratchBits <= 0) {
       m_Scratch = ((uint64_t)m_Buffer[m_WordIndex] << m_ScratchBits);
       m_ScratchBits += c_NumBitsPerWord;

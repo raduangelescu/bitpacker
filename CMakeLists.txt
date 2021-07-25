@@ -11,6 +11,8 @@ add_executable(tester tester.cpp)
 
 add_test(NAME SanityBitRead COMMAND tester sanity_bit_read)
 add_test(NAME SanityBitWrite COMMAND tester sanity_bit_write)
+add_test(NAME SanityBitReadAbove32 COMMAND tester sanity_bit_read_huge_bits)
+add_test(NAME SanityBitWriteAbove32 COMMAND tester sanity_bit_write_huge_bits)
 add_test(NAME Bit1 COMMAND tester bit 1)
 add_test(NAME Bit10 COMMAND tester bit 10)
 add_test(NAME Bit100 COMMAND tester bit 100)

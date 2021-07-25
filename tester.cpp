@@ -44,12 +44,30 @@ int sanity_check_buffer_read() {
   return !r.ReadBits(Value, BitPacker::c_NumBitsPerWord) ? 0 : 1;
 }
 
+int sanity_check_buffer_read_above32() {
+  printf("sanity check buffer read big number of bits\n");
+  const uint32_t HugeNumberOfBits = 128;
+  uint32_t Value = 0;
+  uint32_t ArrFake[1];
+  BufferReader w(ArrFake, 1);
+  return !w.ReadBits(Value, HugeNumberOfBits) ? 0 : 1;
+}
+
 int sanity_check_buffer_write() {
   printf("sanity check buffer write\n");
   uint32_t Value = 0;
   uint32_t ArrFake[1];
   BufferWriter w(ArrFake, 0);
   return !w.WriteBits(Value, BitPacker::c_NumBitsPerWord) ? 0 : 1;
+}
+
+int sanity_check_buffer_write_above32() {
+  printf("sanity check buffer write big number of bits\n");
+  const uint32_t HugeNumberOfBits = 128;
+  uint32_t Value = 0;
+  uint32_t ArrFake[1];
+  BufferWriter w(ArrFake, 1);
+  return !w.WriteBits(Value, HugeNumberOfBits) ? 0 : 1;
 }
 
 int main(int argc, char **argv) {
@@ -71,6 +89,14 @@ int main(int argc, char **argv) {
 
   if (strcmp("sanity_bit_write", testType) == 0) {
     return sanity_check_buffer_write();
+  }
+
+  if (strcmp("sanity_bit_read_huge_bits", testType) == 0) {
+    return sanity_check_buffer_read_above32();
+  }
+
+  if (strcmp("sanity_bit_write_huge_bits", testType) == 0) {
+    return sanity_check_buffer_write_above32();
   }
 
   return 0;
