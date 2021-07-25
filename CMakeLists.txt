@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.2)
+project(bitpacker)
+if(MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+enable_testing()
+add_executable(tester tester.cpp)
+
+add_test(NAME SanityBitRead COMMAND tester sanity_bit_read)
+add_test(NAME SanityBitWrite COMMAND tester sanity_bit_write)
+add_test(NAME Bit1 COMMAND tester bit 1)
+add_test(NAME Bit10 COMMAND tester bit 10)
+add_test(NAME Bit100 COMMAND tester bit 100)
+add_test(NAME Bit1000 COMMAND tester bit 1000)
