@@ -22,10 +22,10 @@ include(cmake/cache.cmake)
 include(cmake/compilerwarnings.cmake)
 set_project_warnings(project_warnings)
 
-include(cmake/Sanitizers.cmake)
+include(cmake/sanitizers.cmake)
 enable_sanitizers(project_options)
 
-include(cmake/StaticAnalyzers.cmake)
+include(cmake/staticanalyzers.cmake)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" ON)
