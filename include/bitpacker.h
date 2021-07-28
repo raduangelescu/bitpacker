@@ -1,8 +1,8 @@
 #ifndef BIT_PACKER_H__
 #define BIT_PACKER_H__
 
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
 
 namespace BitPacker {
 
@@ -26,7 +26,9 @@ constexpr uint32_t getNumberOfBitsForRange(int32_t min, int32_t max) {
   return getNumberOfBits(static_cast<uint32_t>(max - min));
 }
 
-constexpr uint32_t getMaxValueForBits(uint32_t bits) { return static_cast<uint32_t>((1 << bits) - 1); }
+constexpr uint32_t getMaxValueForBits(uint32_t bits) {
+  return static_cast<uint32_t>((1 << bits) - 1);
+}
 
 constexpr uint32_t getMaxValueForBytes(uint32_t bytes) {
   return static_cast<uint32_t>((1 << (bytes * c_NumBitsPerByte)) - 1);
@@ -55,12 +57,14 @@ public:
     }
 
     if (m_ScratchBits <= 0) {
-      m_Scratch = (static_cast<uint64_t>(m_Buffer[m_WordIndex]) << m_ScratchBits);
+      m_Scratch =
+          (static_cast<uint64_t>(m_Buffer[m_WordIndex]) << m_ScratchBits);
       m_ScratchBits += static_cast<int32_t>(c_NumBitsPerWord);
       m_WordIndex += 1;
     }
 
-    value = static_cast<uint32_t>(m_Scratch & static_cast<uint64_t>(c_LUTMask[bits]));
+    value = static_cast<uint32_t>(m_Scratch &
+                                  static_cast<uint64_t>(c_LUTMask[bits]));
     m_Scratch = m_Scratch >> bits;
     m_ScratchBits -= static_cast<int32_t>(bits);
     m_TotalBits -= static_cast<int32_t>(bits);
@@ -113,7 +117,8 @@ public:
     }
 
     const uint64_t writeMask = (c_LUTMask[bits]) << m_ScratchBits;
-    m_Scratch = m_Scratch | (static_cast <uint64_t>(value) << m_ScratchBits & writeMask);
+    m_Scratch =
+        m_Scratch | (static_cast<uint64_t>(value) << m_ScratchBits & writeMask);
     m_ScratchBits += bits;
     if (m_ScratchBits > c_NumBitsPerWord) {
       m_Buffer[m_WordIndex] = static_cast<uint32_t>(m_Scratch);
@@ -189,4 +194,4 @@ private:
 
 } // namespace BitPacker
 
-#endif //BIT_PACKER_H__
+#endif // BIT_PACKER_H__
