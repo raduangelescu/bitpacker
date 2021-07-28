@@ -1,4 +1,6 @@
-#pragma once
+#ifndef BIT_PACKER_H__
+#define BIT_PACKER_H__
+
 #include <cstdint>
 
 namespace BitPacker {
@@ -22,9 +24,9 @@ constexpr uint32_t getNumberOfBitsForRange(uint32_t min, uint32_t max) {
   return getNumberOfBits(max - min);
 }
 
-uint32_t getMaxValueForBits(uint32_t bits) { return (1 << bits) - 1; }
+constexpr uint32_t getMaxValueForBits(uint32_t bits) { return (1 << bits) - 1; }
 
-uint32_t getMaxValueForBytes(uint32_t bytes) {
+constexpr uint32_t getMaxValueForBytes(uint32_t bytes) {
   return (1 << (bytes * c_NumBitsPerByte)) - 1;
 }
 
@@ -63,7 +65,9 @@ public:
     return true;
   }
 
-  bool WouldReadPastEnd(uint32_t bits) { return m_TotalBits - bits >= 0; }
+  bool WouldReadPastEnd(const int32_t bits) const {
+    return (m_TotalBits - bits) >= 0;
+  }
 };
 
 class BitWriter {
@@ -181,3 +185,5 @@ private:
 };
 
 } // namespace BitPacker
+
+#endif //BIT_PACKER_H__

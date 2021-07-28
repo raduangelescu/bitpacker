@@ -17,5 +17,4 @@ out/
 *.vcxproj.filters
 *.exe
 *.pdb
-tester.dir/
-x64/
+build/
