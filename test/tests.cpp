@@ -10,7 +10,7 @@ int randomTestBit(const uint32_t Size) {
   auto ArrWrite = new uint32_t[Size];
   spdlog::info("Generating pattern size {0:d}");
   for (uint32_t i = 0; i < Size; i++) {
-    ArrWrite[i] = rand() % (MaxValueByte + 1);
+    ArrWrite[i] = static_cast<uint32_t>(rand()) % (MaxValueByte + 1);
   }
   auto ArrRead = new uint32_t[Size];
   auto Buffer = new uint32_t[Size];

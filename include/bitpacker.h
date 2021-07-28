@@ -2,6 +2,7 @@
 #define BIT_PACKER_H__
 
 #include <cstdint>
+#include <cassert>
 
 namespace BitPacker {
 
@@ -20,14 +21,15 @@ constexpr uint32_t getNumberOfBits(uint32_t x) {
   return x < 2 ? x : 1 + getNumberOfBits(x >> 1);
 }
 
-constexpr uint32_t getNumberOfBitsForRange(uint32_t min, uint32_t max) {
-  return getNumberOfBits(max - min);
+constexpr uint32_t getNumberOfBitsForRange(int32_t min, int32_t max) {
+  assert(max >= min);
+  return getNumberOfBits(static_cast<uint32_t>(max - min));
 }
 
-constexpr uint32_t getMaxValueForBits(uint32_t bits) { return (1 << bits) - 1; }
+constexpr uint32_t getMaxValueForBits(uint32_t bits) { return static_cast<uint32_t>((1 << bits) - 1); }
 
 constexpr uint32_t getMaxValueForBytes(uint32_t bytes) {
-  return (1 << (bytes * c_NumBitsPerByte)) - 1;
+  return static_cast<uint32_t>((1 << (bytes * c_NumBitsPerByte)) - 1);
 }
 
 class BitReader {
@@ -39,7 +41,8 @@ class BitReader {
 
 public:
   BitReader(uint32_t *buffer, const uint32_t size)
-      : m_Scratch(0), m_ScratchBits(0), m_TotalBits(size * c_NumBitsPerWord),
+      : m_Scratch(0), m_ScratchBits(0),
+        m_TotalBits(static_cast<int32_t>(size * c_NumBitsPerWord)),
         m_WordIndex(0), m_Buffer(buffer) {}
 
   bool ReadBits(uint32_t &value, const uint32_t bits) {
@@ -52,15 +55,15 @@ public:
     }
 
     if (m_ScratchBits <= 0) {
-      m_Scratch = ((uint64_t)m_Buffer[m_WordIndex] << m_ScratchBits);
-      m_ScratchBits += c_NumBitsPerWord;
+      m_Scratch = (static_cast<uint64_t>(m_Buffer[m_WordIndex]) << m_ScratchBits);
+      m_ScratchBits += static_cast<int32_t>(c_NumBitsPerWord);
       m_WordIndex += 1;
     }
 
-    value = (uint32_t)(m_Scratch & (uint64_t)c_LUTMask[bits]);
+    value = static_cast<uint32_t>(m_Scratch & static_cast<uint64_t>(c_LUTMask[bits]));
     m_Scratch = m_Scratch >> bits;
-    m_ScratchBits -= bits;
-    m_TotalBits -= bits;
+    m_ScratchBits -= static_cast<int32_t>(bits);
+    m_TotalBits -= static_cast<int32_t>(bits);
 
     return true;
   }
@@ -95,7 +98,7 @@ public:
   }
 
   void Flush() {
-    m_Buffer[m_WordIndex] = (uint32_t)m_Scratch;
+    m_Buffer[m_WordIndex] = static_cast<uint32_t>(m_Scratch);
     m_ScratchBits = 0;
   }
 
@@ -110,10 +113,10 @@ public:
     }
 
     const uint64_t writeMask = (c_LUTMask[bits]) << m_ScratchBits;
-    m_Scratch = m_Scratch | (((uint64_t)value << m_ScratchBits) & writeMask);
+    m_Scratch = m_Scratch | (static_cast <uint64_t>(value) << m_ScratchBits & writeMask);
     m_ScratchBits += bits;
     if (m_ScratchBits > c_NumBitsPerWord) {
-      m_Buffer[m_WordIndex] = (uint32_t)m_Scratch;
+      m_Buffer[m_WordIndex] = static_cast<uint32_t>(m_Scratch);
       m_Scratch = m_Scratch >> c_NumBitsPerWord;
       m_ScratchBits -= c_NumBitsPerWord;
       m_WordIndex++;
@@ -129,8 +132,8 @@ class WriterStream {
 public:
   enum { IsWriting = 1 };
   enum { IsReading = 0 };
-  WriterStream(uint8_t *buffer, uint32_t bytes)
-      : m_Writer((uint32_t *)buffer, bytes) {}
+  WriterStream(uint8_t *Buffer, uint32_t Bytes)
+      : m_Writer(reinterpret_cast<uint32_t *>(Buffer), Bytes) {}
 
   bool serializeInteger(int32_t Value, int32_t Min, int32_t Max) {
     if (Min > Max) {
@@ -145,8 +148,8 @@ public:
       return false;
     }
 
-    const int Bits = getNumberOfBitsForRange(Min, Max);
-    uint32_t UnsignedValue = Value - Min;
+    const uint32_t Bits = getNumberOfBitsForRange(Min, Max);
+    uint32_t UnsignedValue = static_cast<uint32_t>(Value - Min);
     bool Result = m_Writer.WriteBits(UnsignedValue, Bits);
     return Result;
   }
@@ -160,15 +163,15 @@ public:
   enum { IsWriting = 0 };
   enum { IsReading = 1 };
 
-  ReaderStream(const uint8_t *Buffer, int Bytes)
-      : m_Reader((uint32_t *)Buffer, Bytes) {}
+  ReaderStream(uint8_t *Buffer, uint32_t Bytes)
+      : m_Reader(reinterpret_cast<uint32_t *>(Buffer), Bytes) {}
 
-  bool SerializeInteger(int32_t &Value, int32_t Min, int32_t Max) {
+  bool serializeInteger(int32_t &Value, int32_t Min, int32_t Max) {
     if (Max < Min) {
       return false;
     }
-    const int Bits = getNumberOfBitsForRange(Min, Max);
-    if (m_Reader.WouldReadPastEnd(Bits)) {
+    const uint32_t Bits = getNumberOfBitsForRange(Min, Max);
+    if (m_Reader.WouldReadPastEnd(static_cast<int32_t>(Bits))) {
       return false;
     }
     uint32_t UnsignedValue;
@@ -176,7 +179,7 @@ public:
     if (!Result) {
       return false;
     }
-    Value = (int32_t)UnsignedValue + Min;
+    Value = static_cast<int32_t>(UnsignedValue) + Min;
     return true;
   }
 
