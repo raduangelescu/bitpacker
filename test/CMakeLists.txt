@@ -5,7 +5,7 @@ else()
 endif()
 
 add_library(catch_main STATIC catchmain.cpp)
-target_link_libraries(catch_main PUBLIC CONAN_PKG::catch2 CONAN_PKG::spdlog)
+target_link_libraries(catch_main PUBLIC CONAN_PKG::catch2)
 target_link_libraries(catch_main PRIVATE project_options)
 
 add_executable(tests 

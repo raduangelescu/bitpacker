@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 
 namespace BitPacker {
@@ -141,24 +142,10 @@ public:
   WriterStream(uint8_t *Buffer, uint32_t Bytes)
       : m_Writer(reinterpret_cast<uint32_t *>(Buffer), Bytes) {}
 
-  bool serializeInteger(int32_t Value, int32_t Min, int32_t Max) {
-    if (Min > Max) {
-      return false;
-    }
-
-    if (Value < Min) {
-      return false;
-    }
-
-    if (Value > Max) {
-      return false;
-    }
-
-    const uint32_t Bits = getNumberOfBitsForRange(Min, Max);
-    uint32_t UnsignedValue = static_cast<uint32_t>(Value - Min);
-    bool Result = m_Writer.WriteBits(UnsignedValue, Bits);
-    return Result;
+  bool SerializeBits(uint32_t &Value, const uint32_t Bits) {
+    return m_Writer.WriteBits(Value, Bits);
   }
+  void Flush() { m_Writer.Flush(); }
 
 private:
   BitWriter m_Writer;
@@ -172,26 +159,28 @@ public:
   ReaderStream(uint8_t *Buffer, uint32_t Bytes)
       : m_Reader(reinterpret_cast<uint32_t *>(Buffer), Bytes) {}
 
-  bool serializeInteger(int32_t &Value, int32_t Min, int32_t Max) {
-    if (Max < Min) {
-      return false;
-    }
-    const uint32_t Bits = getNumberOfBitsForRange(Min, Max);
-    if (m_Reader.WouldReadPastEnd(static_cast<int32_t>(Bits))) {
-      return false;
-    }
-    uint32_t UnsignedValue;
-    bool Result = m_Reader.ReadBits(UnsignedValue, Bits);
-    if (!Result) {
-      return false;
-    }
-    Value = static_cast<int32_t>(UnsignedValue) + Min;
-    return true;
+  bool SerializeBits(uint32_t &Value, const uint32_t Bits) {
+    return m_Reader.ReadBits(Value, Bits);
   }
+
+  void Flush() {}
 
 private:
   BitReader m_Reader;
 };
+
+template <typename StreamType>
+bool SerializeIntInternal(StreamType &Stream, uint32_t &Value) {
+  uint32_t Tmp = 0;
+  if constexpr (StreamType::IsWriting) {
+    Tmp = Value;
+  }
+  bool Result = Stream.SerializeBits(Tmp, 32);
+  if constexpr (StreamType::IsReading) {
+    Value = Tmp;
+  }
+  return Result;
+}
 
 template <typename StreamType>
 bool SerializeFloatInternal(StreamType &Stream, float &Value) {
@@ -199,12 +188,12 @@ bool SerializeFloatInternal(StreamType &Stream, float &Value) {
     float FloatValue;
     uint32_t IntValue;
   };
-  FloatInt tmp;
-  if (StreamType::IsWriting) {
+  FloatInt tmp = {0};
+  if constexpr (StreamType::IsWriting) {
     tmp.FloatValue = Value;
   }
   bool Result = Stream.SerializeBits(tmp.IntValue, 32);
-  if (StreamType::IsReading) {
+  if constexpr (StreamType::IsReading) {
     Value = tmp.FloatValue;
   }
   return Result;
@@ -215,18 +204,21 @@ bool SerializeCompressedFloatInternal(StreamType &Stream, float &Value,
                                       float Min, float Max, float Res) {
   const float Delta = Max - Min;
   const float Values = Delta / Res;
-  const uint32_t MaxIntegerValue = (uint32_t)ceil(Values);
-  const int Bits = getNumberOfBitsForRange(0, MaxIntegerValue);
+  const uint32_t MaxIntegerValue = static_cast<uint32_t>(ceil(Values));
+  const uint32_t Bits =
+      getNumberOfBitsForRange(0, static_cast<int32_t>(MaxIntegerValue));
   uint32_t IntegerValue = 0;
-  if (StreamType::IsWriting) {
+  if constexpr (StreamType::IsWriting) {
     float NormalizedValue = std::clamp((Value - Min) / Delta, 0.0f, 1.0f);
-    IntegerValue = (uint32_t)floor(NormalizedValue * MaxIntegerValue + 0.5f);
+    IntegerValue = static_cast<uint32_t>(
+        floor(NormalizedValue * static_cast<float>(MaxIntegerValue) + 0.5f));
   }
   if (!Stream.SerializeBits(IntegerValue, Bits)) {
     return false;
   }
-  if (StreamType::IsReading) {
-    const float NormalizedValue = IntegerValue / float(MaxIntegerValue);
+  if constexpr (StreamType::IsReading) {
+    const float NormalizedValue =
+        static_cast<float>(IntegerValue) / static_cast<float>(MaxIntegerValue);
     Value = NormalizedValue * Delta + Min;
   }
   return true;
@@ -236,21 +228,8 @@ bool SerializeCompressedFloatInternal(StreamType &Stream, float &Value,
 
 #define BitPackInt(Stream, Value, Min, Max)                                    \
   do {                                                                         \
-    assert(min < max);                                                         \
-    int32_t Int32Value;                                                        \
-    if (Stream::IsWriting) {                                                   \
-      assert(Value >= Min);                                                    \
-      assert(Value <= Max);                                                    \
-      Int32Value = static_cast<int32_t>(Value);                                \
-    }                                                                          \
-    if (!stream.serializeInteger(Int32Value, Min, Max)) {                      \
+    if (!SerializeIntInternal(Stream, Value)) {                                \
       return false;                                                            \
-    }                                                                          \
-    if (Stream::IsReading) {                                                   \
-      Value = Int32Value;                                                      \
-      if (Value < Min || Value > Max) {                                        \
-        return false;                                                          \
-      }                                                                        \
     }                                                                          \
   } while (0)
 
@@ -261,9 +240,9 @@ bool SerializeCompressedFloatInternal(StreamType &Stream, float &Value,
     }                                                                          \
   } while (0)
 
-#define BitPackCompressedFloat(stream, Value, min, max)                        \
+#define BitPackCompressedFloat(Stream, Value, Min, Max, Res)                   \
   do {                                                                         \
-    if (!SerializeFloatInternal(stream, Value, min, max)) {                    \
+    if (!SerializeCompressedFloatInternal(Stream, Value, Min, Max, Res)) {     \
       return false;                                                            \
     }                                                                          \
   } while (0)

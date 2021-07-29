@@ -2,7 +2,6 @@
 
 #include "bitpacker.h"
 #include <catch2/catch.hpp>
-#include <spdlog/spdlog.h>
 
 int main(int argc, char *argv[]) {
   const size_t c_Seed = 0xFEFE;
