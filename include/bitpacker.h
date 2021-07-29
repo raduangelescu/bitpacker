@@ -1,6 +1,7 @@
 #ifndef BIT_PACKER_H__
 #define BIT_PACKER_H__
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 
@@ -106,20 +107,20 @@ public:
     m_ScratchBits = 0;
   }
 
-  bool WriteBits(const uint32_t value, const uint32_t bits) {
+  bool WriteBits(const uint32_t Value, const uint32_t Bits) {
 
     if (m_BufferSize <= 0) {
       return false;
     }
 
-    if (bits > c_NumBitsPerWord) {
+    if (Bits > c_NumBitsPerWord) {
       return false;
     }
 
-    const uint64_t writeMask = (c_LUTMask[bits]) << m_ScratchBits;
+    const uint64_t writeMask = (c_LUTMask[Bits]) << m_ScratchBits;
     m_Scratch =
-        m_Scratch | (static_cast<uint64_t>(value) << m_ScratchBits & writeMask);
-    m_ScratchBits += bits;
+        m_Scratch | (static_cast<uint64_t>(Value) << m_ScratchBits & writeMask);
+    m_ScratchBits += Bits;
     if (m_ScratchBits > c_NumBitsPerWord) {
       m_Buffer[m_WordIndex] = static_cast<uint32_t>(m_Scratch);
       m_Scratch = m_Scratch >> c_NumBitsPerWord;
@@ -192,6 +193,78 @@ private:
   BitReader m_Reader;
 };
 
+template <typename StreamType>
+bool SerializeFloatInternal(StreamType &Stream, float &Value) {
+  union FloatInt {
+    float FloatValue;
+    uint32_t IntValue;
+  };
+  FloatInt tmp;
+  if (StreamType::IsWriting) {
+    tmp.FloatValue = Value;
+  }
+  bool Result = Stream.SerializeBits(tmp.IntValue, 32);
+  if (StreamType::IsReading) {
+    Value = tmp.FloatValue;
+  }
+  return Result;
+}
+
+template <typename StreamType>
+bool SerializeCompressedFloatInternal(StreamType &Stream, float &Value,
+                                      float Min, float Max, float Res) {
+  const float Delta = Max - Min;
+  const float Values = Delta / Res;
+  const uint32_t MaxIntegerValue = (uint32_t)ceil(Values);
+  const int Bits = getNumberOfBitsForRange(0, MaxIntegerValue);
+  uint32_t IntegerValue = 0;
+  if (StreamType::IsWriting) {
+    float NormalizedValue = std::clamp((Value - Min) / Delta, 0.0f, 1.0f);
+    IntegerValue = (uint32_t)floor(NormalizedValue * MaxIntegerValue + 0.5f);
+  }
+  if (!Stream.SerializeBits(IntegerValue, Bits)) {
+    return false;
+  }
+  if (StreamType::IsReading) {
+    const float NormalizedValue = IntegerValue / float(MaxIntegerValue);
+    Value = NormalizedValue * Delta + Min;
+  }
+  return true;
+}
+
 } // namespace BitPacker
 
+#define BitPackInt(Stream, Value, Min, Max)                                    \
+  do {                                                                         \
+    assert(min < max);                                                         \
+    int32_t Int32Value;                                                        \
+    if (Stream::IsWriting) {                                                   \
+      assert(Value >= Min);                                                    \
+      assert(Value <= Max);                                                    \
+      Int32Value = static_cast<int32_t>(Value);                                \
+    }                                                                          \
+    if (!stream.serializeInteger(Int32Value, Min, Max)) {                      \
+      return false;                                                            \
+    }                                                                          \
+    if (Stream::IsReading) {                                                   \
+      Value = Int32Value;                                                      \
+      if (Value < Min || Value > Max) {                                        \
+        return false;                                                          \
+      }                                                                        \
+    }                                                                          \
+  } while (0)
+
+#define BitPackFloat(Stream, Value)                                            \
+  do {                                                                         \
+    if (!SerializeFloatInternal(Stream, Value)) {                              \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
+
+#define BitPackCompressedFloat(stream, Value, min, max)                        \
+  do {                                                                         \
+    if (!SerializeFloatInternal(stream, Value, min, max)) {                    \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
 #endif // BIT_PACKER_H__

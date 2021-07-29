@@ -1,0 +1,5 @@
+if(EXISTS "/mnt/d/github/bitpacker/buildlinux/test/tests_tests-6618e97.cmake")
+  include("/mnt/d/github/bitpacker/buildlinux/test/tests_tests-6618e97.cmake")
+else()
+  add_test(tests_NOT_BUILT-6618e97 tests_NOT_BUILT-6618e97)
+endif()

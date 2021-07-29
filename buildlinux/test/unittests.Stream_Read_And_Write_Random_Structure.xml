@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Catch name="tests" filters="Stream Read And Write Random Structure">
+  <Group name="tests">
+    <TestCase name="Stream Read And Write Random Structure" tags="[StreamRead/Write]" filename="/mnt/d/github/bitpacker/test/tests.cpp" line="136">
+      <OverallResult success="true"/>
+    </TestCase>
+    <OverallResults successes="5" failures="0" expectedFailures="0"/>
+    <OverallResultsCases successes="1" failures="0" expectedFailures="0"/>
+  </Group>
+  <OverallResults successes="5" failures="0" expectedFailures="0"/>
+  <OverallResultsCases successes="1" failures="0" expectedFailures="0"/>
+</Catch>
