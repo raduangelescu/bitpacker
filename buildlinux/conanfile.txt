@@ -1,9 +1,0 @@
-[generators]
-cmake
-
-[requires]
-catch2/2.13.3
-
-[options]
-
-[imports]
