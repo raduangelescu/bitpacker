@@ -108,6 +108,18 @@ bool structSerializeTest() {
   return RandomStructInitial == RandomStructRead;
 }
 
+bool structSerializeString() {
+  char TestString[15] = {"ABCDEFGHIJKLMN"};
+  char Out[15] = {"xxxxxxxxxxxxxx"};
+  const uint32_t BufferSize = 256;
+  uint8_t Buffer[BufferSize];
+  WriterStream WriteStream(Buffer, BufferSize);
+  ReaderStream ReadStream(Buffer, BufferSize);
+  BitPackString(WriteStream, TestString);
+  BitPackString(ReadStream, Out);
+  return strcmp(TestString, Out) == 0;
+}
+
 TEST_CASE("Random Test Bit", "[bitWriter/Reader]") {
   REQUIRE(randomTestBit(1) == 0);
   REQUIRE(randomTestBit(13) == 0);
@@ -139,4 +151,8 @@ TEST_CASE("Stream Read And Write Random Structure", "[StreamRead/Write]") {
   REQUIRE(structSerializeTest() == true);
   REQUIRE(structSerializeTest() == true);
   REQUIRE(structSerializeTest() == true);
+}
+
+TEST_CASE("Stream Read And Write String", "[StreamRead/Write]") {
+  REQUIRE(structSerializeString() == true);
 }

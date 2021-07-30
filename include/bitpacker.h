@@ -5,6 +5,48 @@
 #include <cassert>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
+
+#define BitPackInt(Stream, Value, Min, Max)                                    \
+  do {                                                                         \
+    if (!SerializeIntInternal(Stream, Value)) {                                \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
+
+#define BitPackFloat(Stream, Value)                                            \
+  do {                                                                         \
+    if (!SerializeFloatInternal(Stream, Value)) {                              \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
+
+#define BitPackCompressedFloat(Stream, Value, Min, Max, Res)                   \
+  do {                                                                         \
+    if (!SerializeCompressedFloatInternal(Stream, Value, Min, Max, Res)) {     \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
+
+#define BitPackAlign(Stream)                                                   \
+  do {                                                                         \
+    if (!Stream.SerializeAlign())                                              \
+      return false;                                                            \
+  } while (0)
+
+#define BitPackBytes(Stream, Bytes, Length)                                    \
+  do {                                                                         \
+    if (!SerializeBytesInternal(Stream, Bytes, Length)) {                      \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
+
+#define BitPackString(Stream, String)                                          \
+  do {                                                                         \
+    if (!SerializeStringInternal(Stream, String)) {                            \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
 
 namespace BitPacker {
 
@@ -48,6 +90,37 @@ public:
       : m_Scratch(0), m_ScratchBits(0),
         m_TotalBits(static_cast<int32_t>(size * c_NumBitsPerWord)),
         m_WordIndex(0), m_Buffer(buffer) {}
+
+  bool ReadAlign() {
+    const int32_t RemainderBits = m_ScratchBits % 8;
+    if (RemainderBits != 0) {
+
+      uint32_t Value = 0;
+      if (RemainderBits > static_cast<int32_t>(sizeof(uint8_t))) {
+        return false;
+      }
+      ReadBits(Value,
+               static_cast<uint32_t>(sizeof(uint8_t) -
+                                     static_cast<uint32_t>(RemainderBits)));
+      assert(m_ScratchBits % (sizeof(uint8_t)) == 0);
+      if (Value != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool ReadBytes(uint32_t &Size, uint8_t *Buffer) {
+    // padding
+    ReadAlign();
+    const uint32_t ByteOffsetIndex = static_cast<uint32_t>(m_ScratchBits) /
+                                     static_cast<uint32_t>(sizeof(uint8_t));
+    uint8_t *BufferBytes = reinterpret_cast<uint8_t *>(m_Buffer);
+    BufferBytes += ByteOffsetIndex + m_WordIndex * sizeof(uint32_t);
+    memcpy(Buffer, BufferBytes, Size);
+    m_WordIndex += Size / static_cast<uint32_t>(sizeof(uint64_t));
+    return true;
+  }
 
   bool ReadBits(uint32_t &value, const uint32_t bits) {
     if (m_TotalBits <= 0) {
@@ -108,6 +181,32 @@ public:
     m_ScratchBits = 0;
   }
 
+  void WriteAlign() {
+
+    const int32_t RemainderBits = m_ScratchBits % 8;
+    if (RemainderBits != 0) {
+      uint32_t Zero = 0;
+      if (static_cast<int32_t>(sizeof(uint8_t)) < RemainderBits) {
+        return;
+      }
+      WriteBits(Zero,
+                static_cast<uint32_t>(sizeof(uint8_t) -
+                                      static_cast<uint32_t>(RemainderBits)));
+      assert((m_ScratchBits % sizeof(uint8_t)) == 0);
+    }
+  }
+
+  bool WriteBytes(const uint32_t Size, const uint8_t *Buffer) {
+    // padding
+    WriteAlign();
+    const uint32_t ByteOffsetIndex = m_ScratchBits / sizeof(uint8_t);
+    uint8_t *BufferBytes = reinterpret_cast<uint8_t *>(m_Buffer);
+    BufferBytes += ByteOffsetIndex + m_WordIndex * sizeof(uint32_t);
+    memcpy(BufferBytes, Buffer, Size);
+    m_WordIndex += Size / static_cast<uint32_t>(sizeof(uint64_t));
+    return true;
+  }
+
   bool WriteBits(const uint32_t Value, const uint32_t Bits) {
 
     if (m_BufferSize <= 0) {
@@ -122,7 +221,7 @@ public:
     m_Scratch =
         m_Scratch | (static_cast<uint64_t>(Value) << m_ScratchBits & writeMask);
     m_ScratchBits += Bits;
-    if (m_ScratchBits > c_NumBitsPerWord) {
+    if (m_ScratchBits >= c_NumBitsPerWord) {
       m_Buffer[m_WordIndex] = static_cast<uint32_t>(m_Scratch);
       m_Scratch = m_Scratch >> c_NumBitsPerWord;
       m_ScratchBits -= c_NumBitsPerWord;
@@ -145,6 +244,11 @@ public:
   bool SerializeBits(uint32_t &Value, const uint32_t Bits) {
     return m_Writer.WriteBits(Value, Bits);
   }
+
+  bool SerializeBytes(const uint32_t Size, const uint8_t *Buffer) {
+    return m_Writer.WriteBytes(Size, Buffer);
+  }
+
   void Flush() { m_Writer.Flush(); }
 
 private:
@@ -161,6 +265,10 @@ public:
 
   bool SerializeBits(uint32_t &Value, const uint32_t Bits) {
     return m_Reader.ReadBits(Value, Bits);
+  }
+
+  bool SerializeBytes(uint32_t &Size, uint8_t *Buffer) {
+    return m_Reader.ReadBytes(Size, Buffer);
   }
 
   void Flush() {}
@@ -223,27 +331,29 @@ bool SerializeCompressedFloatInternal(StreamType &Stream, float &Value,
   }
   return true;
 }
+template <typename StreamType>
+bool SerializeBytesInternal(StreamType &Stream, uint8_t *Buffer,
+                            uint32_t Length) {
+  if (!Stream.SerializeBytes(Length, Buffer)) {
+    return false;
+  }
+  return true;
+}
+
+template <typename StreamType>
+bool SerializeStringInternal(StreamType &Stream, char *String) {
+  uint32_t Length;
+  if constexpr (StreamType::IsWriting) {
+    Length = static_cast<uint32_t>(strlen(String));
+  }
+  BitPackInt(Stream, Length, 0, UINT32_MAX);
+  BitPackBytes(Stream, reinterpret_cast<uint8_t *>(String), Length);
+  if constexpr (StreamType::IsReading) {
+    String[Length] = '\0';
+  }
+  return true;
+}
 
 } // namespace BitPacker
 
-#define BitPackInt(Stream, Value, Min, Max)                                    \
-  do {                                                                         \
-    if (!SerializeIntInternal(Stream, Value)) {                                \
-      return false;                                                            \
-    }                                                                          \
-  } while (0)
-
-#define BitPackFloat(Stream, Value)                                            \
-  do {                                                                         \
-    if (!SerializeFloatInternal(Stream, Value)) {                              \
-      return false;                                                            \
-    }                                                                          \
-  } while (0)
-
-#define BitPackCompressedFloat(Stream, Value, Min, Max, Res)                   \
-  do {                                                                         \
-    if (!SerializeCompressedFloatInternal(Stream, Value, Min, Max, Res)) {     \
-      return false;                                                            \
-    }                                                                          \
-  } while (0)
 #endif // BIT_PACKER_H__
