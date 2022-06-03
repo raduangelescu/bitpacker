@@ -131,7 +131,7 @@ public:
       return false;
     }
 
-    if (m_ScratchBits - (int32_t)bits < 0) {
+    if (m_ScratchBits - static_cast<int32_t>(bits) < 0) {
       m_Scratch =
           (static_cast<uint64_t>(m_Buffer[m_WordIndex]) << m_ScratchBits);
       m_ScratchBits += static_cast<int32_t>(c_NumBitsPerWord);
