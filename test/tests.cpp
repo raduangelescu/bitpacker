@@ -70,28 +70,41 @@ bool AreSame(float a, float b) {
 struct STestRandomStruct {
   uint32_t Id;
   uint32_t ValueUnsignedInt;
-  float ValueFloat;
-  float ValueFloatCompressed;
+  float ValueFloat[5] = {1.1f, 10.43f, 2.0f, 111.11f, 21.2f};
+  float ValueFloatCompressed[4] = {1.2f, 0.1f, 1.2f, 0.9f};
   STestRandomStruct() {
     Id = static_cast<uint32_t>(rand());
     ValueUnsignedInt = static_cast<uint32_t>(rand());
-    ValueFloat = static_cast<float>(rand()) / static_cast<float>(rand() + 1);
-    ValueFloatCompressed = 1.2f;
   }
 
   template <typename Stream> bool Serialize(Stream &stream) {
     BitPackInt(stream, Id, 0, UINT32_MAX);
     BitPackInt(stream, ValueUnsignedInt, 0, UINT32_MAX);
-    BitPackFloat(stream, ValueFloat);
-    BitPackCompressedFloat(stream, ValueFloatCompressed, 0.0f, 100.0f, 0.01f);
+    BitPackFloat(stream, ValueFloat[0]);
+    BitPackFloat(stream, ValueFloat[1]);
+    BitPackFloat(stream, ValueFloat[2]);
+    BitPackFloat(stream, ValueFloat[3]);
+    BitPackFloat(stream, ValueFloat[4]);
+    BitPackCompressedFloat(stream, ValueFloatCompressed[0], 0.0f, 100.0f,
+                           0.01f);
+    BitPackCompressedFloat(stream, ValueFloatCompressed[1], 0.0f, 3.0f, 0.01f);
+    BitPackCompressedFloat(stream, ValueFloatCompressed[2], 0.0f, 2.0f, 0.01f);
+    BitPackCompressedFloat(stream, ValueFloatCompressed[3], 0.0f, 2.0f, 0.01f);
     stream.Flush();
     return true;
   }
 
   bool operator==(const STestRandomStruct &other) {
     return Id == other.Id && ValueUnsignedInt == other.ValueUnsignedInt &&
-           AreSame(ValueFloat, other.ValueFloat) &&
-           AreSame(ValueFloatCompressed, other.ValueFloatCompressed);
+           AreSame(ValueFloat[0], other.ValueFloat[0]) &&
+           AreSame(ValueFloat[1], other.ValueFloat[1]) &&
+           AreSame(ValueFloat[2], other.ValueFloat[2]) &&
+           AreSame(ValueFloat[3], other.ValueFloat[3]) &&
+           AreSame(ValueFloat[4], other.ValueFloat[4]) &&
+           AreSame(ValueFloatCompressed[0], other.ValueFloatCompressed[0]) &&
+           AreSame(ValueFloatCompressed[1], other.ValueFloatCompressed[1]) &&
+           AreSame(ValueFloatCompressed[2], other.ValueFloatCompressed[2]) &&
+           AreSame(ValueFloatCompressed[3], other.ValueFloatCompressed[3]);
   }
 };
 
